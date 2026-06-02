@@ -30,13 +30,10 @@
         "./lib/*"
       ],
       "@/models/*": [
-        "../server/models/*"
+        "./models/*"
       ],
       "@/lib/*": [
-        "../server/lib/*"
-      ],
-      "@/services/*": [
-        "../server/services/*"
+        "./lib/*"
       ]
     }
   },
