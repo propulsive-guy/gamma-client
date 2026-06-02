@@ -53,37 +53,56 @@ export default function OrderStatusPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [restaurant, setRestaurant] = useState<RestaurantInfo | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!restaurantId || !tableId) return;
 
         const fetchData = async () => {
-            const sessionId = getSessionId();
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-            const [ordersResponse, restaurantInfo] = await Promise.all([
-                fetch(`${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`),
-                getPublicRestaurantInfo(restaurantId)
-            ]);
+            try {
+                const sessionId = getSessionId();
+                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                console.log(`[fetchData] Fetching from backend: ${backendUrl}`);
+                
+                const [ordersResponse, restaurantInfo] = await Promise.all([
+                    fetch(`${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`),
+                    getPublicRestaurantInfo(restaurantId)
+                ]);
 
-            const ordersData = await ordersResponse.json();
-            setOrders(ordersData.orders || []);
+                if (!ordersResponse.ok) {
+                    throw new Error(`Failed to fetch orders: HTTP ${ordersResponse.status}`);
+                }
 
-            if (restaurantInfo) {
-                setRestaurant(restaurantInfo);
+                const ordersData = await ordersResponse.json();
+                setOrders(ordersData.orders || []);
+
+                if (restaurantInfo) {
+                    setRestaurant(restaurantInfo);
+                }
+                setError(null);
+            } catch (err: any) {
+                console.error('[fetchData] Error loading order status page:', err);
+                setError(err.message || 'Failed to connect to the backend server. Please verify your connection.');
+            } finally {
+                setLoading(false);
             }
-
-            setLoading(false);
         };
 
         fetchData();
 
         // Poll for orders only
         const interval = setInterval(async () => {
-            const sessionId = getSessionId();
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-            const response = await fetch(`${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`);
-            const data = await response.json();
-            setOrders(data.orders || []);
+            try {
+                const sessionId = getSessionId();
+                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                const response = await fetch(`${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setOrders(data.orders || []);
+                }
+            } catch (err) {
+                console.error('[Polling] Error fetching orders:', err);
+            }
         }, 5000);
 
         return () => clearInterval(interval);
@@ -142,6 +161,17 @@ export default function OrderStatusPage() {
                     <h1 className="text-3xl font-bold mb-6" style={{ color: t.text }}>
                         Your Orders
                     </h1>
+
+                    {error && (
+                        <div className="rounded-xl shadow-md p-6 mb-6 text-center bg-red-50 border border-red-200 text-red-700">
+                            <p className="font-semibold text-base">Connection Error</p>
+                            <p className="text-sm mt-1">{error}</p>
+                            <p className="text-xs mt-2 text-gray-500">
+                                Attempted to connect to: <code>{process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}</code>. 
+                                Make sure your Vercel project has the <strong>NEXT_PUBLIC_BACKEND_URL</strong> environment variable set to your EC2 instance IP.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="space-y-6">
                         {orders.map((order) => (
