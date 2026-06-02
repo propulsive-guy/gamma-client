@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth.edge';
+import { auth } from './lib/auth.edge';
 
 export default auth((req) => {
     const { nextUrl } = req;
