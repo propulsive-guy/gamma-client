@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import { getPublicRestaurantInfo } from '@/app/actions/restaurant';
+import { getOrdersBySession } from '@/app/actions/order';
 import QRCode from 'qrcode';
 
 interface Order {
@@ -61,20 +62,17 @@ export default function OrderStatusPage() {
         const fetchData = async () => {
             try {
                 const sessionId = getSessionId();
-                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-                console.log(`[fetchData] Fetching from backend: ${backendUrl}`);
                 
-                const [ordersResponse, restaurantInfo] = await Promise.all([
-                    fetch(`${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`),
+                const [ordersResult, restaurantInfo] = await Promise.all([
+                    getOrdersBySession(sessionId, tableId),
                     getPublicRestaurantInfo(restaurantId)
                 ]);
 
-                if (!ordersResponse.ok) {
-                    throw new Error(`Failed to fetch orders: HTTP ${ordersResponse.status}`);
+                if (!ordersResult.success) {
+                    throw new Error(ordersResult.error || 'Failed to fetch orders');
                 }
 
-                const ordersData = await ordersResponse.json();
-                setOrders(ordersData.orders || []);
+                setOrders(ordersResult.orders);
 
                 if (restaurantInfo) {
                     setRestaurant(restaurantInfo);
@@ -82,7 +80,7 @@ export default function OrderStatusPage() {
                 setError(null);
             } catch (err: any) {
                 console.error('[fetchData] Error loading order status page:', err);
-                setError(err.message || 'Failed to connect to the backend server. Please verify your connection.');
+                setError(err.message || 'Failed to connect to the backend server.');
             } finally {
                 setLoading(false);
             }
@@ -90,15 +88,13 @@ export default function OrderStatusPage() {
 
         fetchData();
 
-        // Poll for orders only
+        // Poll for orders via server action (avoids mixed-content blocking)
         const interval = setInterval(async () => {
             try {
                 const sessionId = getSessionId();
-                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-                const response = await fetch(`${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setOrders(data.orders || []);
+                const result = await getOrdersBySession(sessionId, tableId);
+                if (result.success) {
+                    setOrders(result.orders);
                 }
             } catch (err) {
                 console.error('[Polling] Error fetching orders:', err);

@@ -71,6 +71,30 @@ export async function getOrders() {
 }
 
 /**
+ * Get orders by session ID and table ID (customer-facing, used by order-status page)
+ * This runs server-side to avoid mixed-content (HTTPS->HTTP) browser blocking.
+ */
+export async function getOrdersBySession(sessionId: string, tableId: string) {
+    try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+        const res = await fetch(
+            `${backendUrl}/api/v1/orders/by-session?sessionId=${sessionId}&tableId=${tableId}`,
+            { cache: 'no-store' }
+        );
+
+        if (!res.ok) {
+            return { success: false, orders: [], error: `HTTP ${res.status}` };
+        }
+
+        const data = await res.json();
+        return { success: true, orders: data.orders || [] };
+    } catch (error: any) {
+        console.error('Error fetching orders by session:', error);
+        return { success: false, orders: [], error: error.message || 'Failed to fetch orders' };
+    }
+}
+
+/**
  * Update payment status
  */
 export async function updatePaymentStatus(orderId: string, paymentStatus: 'pending' | 'paid') {
