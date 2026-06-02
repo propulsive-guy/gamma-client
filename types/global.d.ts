@@ -8,11 +8,10 @@ declare global {
         interface ProcessEnv {
             MONGODB_URI: string;
             NEXTAUTH_SECRET: string;
-            NEXTAUTH_URL: string;
-            CLOUDINARY_CLOUD_NAME: string;
-            CLOUDINARY_API_KEY: string;
-            CLOUDINARY_API_SECRET: string;
+            AUTH_SECRET: string;
+            NEXT_PUBLIC_BACKEND_URL: string;
             NEXT_PUBLIC_BASE_URL: string;
+            SIGNUP_SECRET_KEY: string;
         }
     }
 }

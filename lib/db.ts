@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import dns from 'dns';
 
 // Ensure all Mongoose models are registered to avoid MissingSchemaError
 import '../models/User';
@@ -8,11 +7,15 @@ import '../models/Table';
 import '../models/MenuItem';
 import '../models/Order';
 
-// Apply DNS fix at module load time (covers Express process)
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {
-  // ignore
+// Apply DNS fix only on local development (macOS c-ares resolver issue)
+if (typeof process !== 'undefined' && process.platform === 'darwin') {
+  try {
+    // Dynamic import to avoid bundling dns in Edge/serverless
+    const dns = require('dns');
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (e) {
+    // ignore — dns module may not be available in all runtimes
+  }
 }
 
 const MONGODB_URI = process.env.MONGODB_URI!;
@@ -33,16 +36,6 @@ if (!cached) {
 }
 
 async function dbConnect() {
-  // Apply DNS fix inside the function too — this ensures it runs in any
-  // Turbopack/Next.js worker thread that calls this function, since
-  // dns.setServers() at module-load time only affects the thread that
-  // loaded the module.
-  try {
-    dns.setServers(['8.8.8.8', '1.1.1.1']);
-  } catch (e) {
-    // ignore — don't block connection attempt
-  }
-
   if (cached.conn) {
     return cached.conn;
   }

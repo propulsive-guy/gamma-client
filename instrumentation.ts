@@ -5,10 +5,12 @@
  */
 export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
-        // Fix for Node.js DNS resolution issues on macOS where c-ares resolver
-        // fails to resolve MongoDB Atlas SRV records, defaulting to 127.0.0.1.
-        const dns = await import('dns');
-        dns.setServers(['8.8.8.8', '1.1.1.1']);
-        console.log('[instrumentation] DNS servers set to public resolvers for MongoDB Atlas SRV resolution.');
+        try {
+            const dns = await import('dns');
+            dns.setServers(['8.8.8.8', '1.1.1.1']);
+            console.log('[instrumentation] DNS servers set to public resolvers for MongoDB Atlas SRV resolution.');
+        } catch (e) {
+            // ignore — dns module not available
+        }
     }
 }
