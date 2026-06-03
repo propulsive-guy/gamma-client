@@ -9,13 +9,29 @@ export const useSocket = (restaurantId?: string) => {
     useEffect(() => {
         if (!restaurantId) return;
 
-        const socketInstance = io(process.env.NEXT_PUBLIC_APP_URL || '', {
+        // Socket.IO runs on the Express backend (EC2), not on Vercel
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+
+        if (!backendUrl) {
+            console.warn('[useSocket] NEXT_PUBLIC_BACKEND_URL not set, skipping socket connection');
+            return;
+        }
+
+        const socketInstance = io(backendUrl, {
             path: '/api/socket',
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000,
+            timeout: 10000,
         });
 
         socketInstance.on('connect', () => {
-            console.log('Connected to socket');
+            console.log('[useSocket] Connected to backend socket');
             socketInstance.emit('join-restaurant', restaurantId);
+        });
+
+        socketInstance.on('connect_error', (err) => {
+            console.warn('[useSocket] Connection error:', err.message);
         });
 
         setSocket(socketInstance);

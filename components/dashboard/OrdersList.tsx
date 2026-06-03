@@ -64,6 +64,7 @@ export function OrdersList({ initialOrders, restaurant }: { initialOrders: Order
 
     const socket = useSocket(restaurant._id);
 
+    // Socket.IO listener for real-time updates (works when socket connects)
     useEffect(() => {
         if (!socket) return;
 
@@ -86,6 +87,23 @@ export function OrdersList({ initialOrders, restaurant }: { initialOrders: Order
             socket.off('order-updated');
         };
     }, [socket]);
+
+    // Polling fallback: refresh orders every 10 seconds via server action
+    // This ensures live updates even when Socket.IO can't connect (HTTPS→HTTP mixed content)
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                const result = await getOrders();
+                if (result.success && result.data) {
+                    setOrders(result.data);
+                }
+            } catch (err) {
+                console.error('[OrdersList] Polling error:', err);
+            }
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
         setOrders(prevOrders => prevOrders.map(order =>
