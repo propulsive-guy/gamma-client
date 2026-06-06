@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { createMenuItem, deleteMenuItem, toggleMenuItemAvailability, updateMenuItem } from '@/app/actions/menu';
@@ -30,6 +30,7 @@ export function MenuList({ initialMenuItems }: { initialMenuItems: MenuItem[] })
     });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -150,9 +151,51 @@ export function MenuList({ initialMenuItems }: { initialMenuItems: MenuItem[] })
         return acc;
     }, {} as Record<string, MenuItem[]>);
 
+    const categories = ['All', ...Object.keys(groupedItems).sort()];
+
+    // Reset selectedCategory to 'All' if it's no longer present in the category list
+    useEffect(() => {
+        if (!categories.includes(selectedCategory)) {
+            setSelectedCategory('All');
+        }
+    }, [categories, selectedCategory]);
+
+    const getCategoryCount = (category: string) => {
+        if (category === 'All') {
+            return initialMenuItems.length;
+        }
+        return groupedItems[category]?.length || 0;
+    };
+
+    const filteredGroupedItems = Object.entries(groupedItems).filter(([category]) =>
+        selectedCategory === 'All' ? true : category === selectedCategory
+    );
+
     return (
         <div className="space-y-8">
-            <div className="flex justify-end">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in duration-300">
+                <div className="flex flex-wrap gap-2 max-w-full overflow-x-auto no-scrollbar py-1">
+                    {categories.map((category) => (
+                        <button
+                            key={category}
+                            onClick={() => setSelectedCategory(category)}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+                                selectedCategory === category
+                                    ? 'bg-sky-400 text-white shadow-md shadow-sky-400/20 scale-105'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100 hover:scale-102'
+                            }`}
+                        >
+                            {category}
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                                selectedCategory === category
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-gray-200 text-gray-500'
+                            }`}>
+                                {getCategoryCount(category)}
+                            </span>
+                        </button>
+                    ))}
+                </div>
                 <Button
                     onClick={() => {
                         if (showAddForm && editingId) {
@@ -170,7 +213,7 @@ export function MenuList({ initialMenuItems }: { initialMenuItems: MenuItem[] })
                             }
                         }
                     }}
-                    className="flex items-center gap-2 bg-sky-400 hover:bg-sky-500 text-white shadow-lg shadow-sky-400/20 transition-all hover:-translate-y-0.5"
+                    className="flex items-center gap-2 bg-sky-400 hover:bg-sky-500 text-white shadow-lg shadow-sky-400/20 transition-all hover:-translate-y-0.5 whitespace-nowrap cursor-pointer"
                 >
                     <PlusIcon className="h-5 w-5" />
                     Add Menu Item
@@ -209,13 +252,31 @@ export function MenuList({ initialMenuItems }: { initialMenuItems: MenuItem[] })
                             className="bg-sky-50 border-sky-100 text-gray-900 placeholder:text-gray-400 focus:ring-sky-500 focus:border-sky-500"
                         />
 
-                        <Input
-                            label="Category"
-                            value={formData.category}
-                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                            required
-                            className="bg-sky-50 border-sky-100 text-gray-900 placeholder:text-gray-400 focus:ring-sky-500 focus:border-sky-500"
-                        />
+                        <div className="space-y-2">
+                            <Input
+                                label="Category"
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                required
+                                placeholder="e.g. Starters, Main Course, Drinks"
+                                className="bg-sky-50 border-sky-100 text-gray-900 placeholder:text-gray-400 focus:ring-sky-500 focus:border-sky-500"
+                            />
+                            {Object.keys(groupedItems).length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                    <span className="text-xs text-gray-500 mr-1">Suggested:</span>
+                                    {Object.keys(groupedItems).map((cat) => (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, category: cat })}
+                                            className="text-xs px-2.5 py-1 rounded-lg border border-sky-100 bg-sky-50/30 text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer"
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">
@@ -266,8 +327,8 @@ export function MenuList({ initialMenuItems }: { initialMenuItems: MenuItem[] })
             )}
 
             <div className="grid gap-8">
-                {Object.entries(groupedItems).map(([category, items]) => (
-                    <div key={category} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                {filteredGroupedItems.map(([category, items]) => (
+                    <div key={category} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-300">
                         <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100">
                             <h2 className="text-lg font-bold text-gray-900 capitalize font-display">
                                 {category}
